@@ -29,3 +29,18 @@ def mag_thresh(image, sobel_kernel=3, thresh=(0, 255)):
     mag = np.sqrt(sobel_x ** 2 + sobel_y ** 2)
 
     return to_binary(mag, thresh)
+
+
+def thresh_edge(hls_img, orig_img):
+    _, l_thresh_img = cv.threshold(hls_img[:, :, 1], 120, 255, cv.THRESH_BINARY)
+    l_thresh_img = cv.GaussianBlur(l_thresh_img, (3, 3), 0)
+
+    l_thresh_img = mag_thresh(l_thresh_img, sobel_kernel=3, thresh=(110, 255))
+
+    _, s_thresh_img = cv.threshold(hls_img[:, :, 2], 80, 255, cv.THRESH_BINARY)
+    _, r_thresh_img = cv.threshold(orig_img[:, :, 2], 120, 255, cv.THRESH_BINARY)
+
+    sr_thresh_img = cv.bitwise_and(s_thresh_img, r_thresh_img)
+    srl_thresh_img = cv.bitwise_or(sr_thresh_img, l_thresh_img.astype(np.uint8))
+
+    return srl_thresh_img
