@@ -6,10 +6,11 @@ import util
 
 class Lane:
     def __init__(self):
-        self.path_ = ''
         self.mode_ = 'image'
         self.lane_file_ = -1
-        self.thresh_img_ = -1
+        self.thresh_img_ = []
+        self.roi_select_img_ = []
+        self.roi_ = []
 
     def set_mode(self, mode):
         self.mode_ = mode
@@ -39,12 +40,35 @@ class Lane:
 
         return srl_thresh_img
 
+    def click_event(self, event, x, y, flags, params):
+        # checking for left mouse clicks
+        if event == cv.EVENT_LBUTTONDOWN:
+            # displaying the coordinates
+            # on the Shell
+            self.roi_.append([x, y])
+            print(x, ' ', y)
+
+            self.roi_select_img_ = cv.circle(self.roi_select_img_, (x, y), radius=5,
+                                             color=(255, 0, 0),
+                                             thickness=-1)
+            cv.imshow('image', self.roi_select_img_)
+
     def detect_img(self):
         hls = cv.cvtColor(self.lane_file_, cv.COLOR_RGB2HLS)
         self.thresh_img_ = self.thresh_edge(hls, self.lane_file_)
+        self.roi_select_img_ = self.thresh_img_.copy()
+
+        cv.imshow('image', self.thresh_img_)
+        cv.setMouseCallback('image', self.click_event)
+
+        cv.waitKey(0)
+
         return self.thresh_img_
 
     def detect(self):
+        self.thresh_img_ = []
+        self.roi_select_img_ = []
+        self.roi_ = []
         if self.mode_ == 'image':
             return self.detect_img()
 
@@ -56,4 +80,5 @@ result = lane_detector.detect()
 
 cv.imshow("Image", result)
 cv.waitKey(0)
+print(lane_detector.roi_)
 cv.destroyAllWindows()
