@@ -1,6 +1,7 @@
 import cv2 as cv
 import numpy as np
 import util
+from matplotlib import pyplot as plt
 
 
 class Lane:
@@ -120,7 +121,7 @@ class Lane:
         if plot:
             cv.imshow('Image with Sliding Window', frame_sliding_window)
             cv.waitKey(0)
-
+            
         return left_lane_poly, right_lane_poly
 
     def detect_img(self, frame):
