@@ -7,10 +7,12 @@ import util
 class Lane:
     def __init__(self):
         self.mode_ = 'image'
+        self.width_ = -1
+        self.height_ = -1
         self.lane_file_ = -1
-        self.thresh_img_ = []
         self.roi_select_img_ = []
         self.roi_ = []
+        self.roi_transform_ = []
 
     def set_mode(self, mode):
         self.mode_ = mode
@@ -39,27 +41,47 @@ class Lane:
                                              thickness=-1)
             cv.imshow('image', self.roi_select_img_)
 
-    def detect_img(self):
-        dim = self.lane_file_.shape
+    def set_roi(self, frame):
+        dim = frame.shape
         height = dim[0]
         width = dim[1]
-        hls = cv.cvtColor(self.lane_file_, cv.COLOR_RGB2HLS)
-        self.thresh_img_ = util.thresh_edge(hls, self.lane_file_)
-        self.roi_select_img_ = self.thresh_img_.copy()
 
-        cv.imshow('image', self.thresh_img_)
+        cv.imshow('image', frame)
         cv.setMouseCallback('image', self.click_event)
         cv.waitKey(0)
 
         self.roi_[1][1] = height
         self.roi_[2][1] = height
+        self.roi_ = np.float32(self.roi_)
 
-        return self.thresh_img_
+        self.roi_transform_.append([0.15 * width, 0])
+        self.roi_transform_.append([0.15 * width, height])
+        self.roi_transform_.append([0.85 * width, height])
+        self.roi_transform_.append([0.85 * width, 0])
+        self.roi_transform_ = np.float32(self.roi_transform_)
+
+    def detect_img(self):
+        hls = cv.cvtColor(self.lane_file_, cv.COLOR_RGB2HLS)
+        thresh_img = util.thresh_edge(hls, self.lane_file_)
+
+        self.roi_select_img_ = thresh_img.copy()
+        self.set_roi(self.roi_select_img_)
+
+        warped_img = util.transform_perspective(thresh_img, self.roi_, self.roi_transform_)
+
+        cv.imshow('image', warped_img)
+        cv.waitKey(0)
+
+
+
+
+
+        return thresh_img
 
     def detect(self):
-        self.thresh_img_ = []
         self.roi_select_img_ = []
         self.roi_ = []
+        self.roi_transform_ = []
         if self.mode_ == 'image':
             return self.detect_img()
 
@@ -72,4 +94,5 @@ result = lane_detector.detect()
 # cv.imshow("Image", result)
 # cv.waitKey(0)
 print(lane_detector.roi_)
+print(lane_detector.roi_transform_)
 cv.destroyAllWindows()

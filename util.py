@@ -44,3 +44,16 @@ def thresh_edge(hls_img, orig_img):
     srl_thresh_img = cv.bitwise_or(sr_thresh_img, l_thresh_img.astype(np.uint8))
 
     return srl_thresh_img
+
+
+def transform_perspective(frame, roi, roi_transform):
+    dim = frame.shape
+    height = dim[0]
+    width = dim[1]
+    transform_matrix = cv.getPerspectiveTransform(roi, roi_transform)
+
+    warped_img = cv.warpPerspective(frame, transform_matrix,
+                                    [width, height], flags=cv.INTER_LINEAR)
+
+    _, warped_img = cv.threshold(warped_img, 127, 255, cv.THRESH_BINARY)
+    return warped_img
