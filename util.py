@@ -63,9 +63,6 @@ def calculate_histogram_peak(frame):
     histogram = np.sum(frame[int(frame.shape[0] / 2):, :], axis=0)
     mid_point = np.int(len(histogram) / 2)
 
-    print(histogram)
-    print(mid_point)
-
     left_peak = np.argmax(histogram[:mid_point])
     right_peak = np.argmax(histogram[mid_point:])+mid_point
 
