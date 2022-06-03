@@ -1,15 +1,12 @@
 import cv2 as cv
 import numpy as np
-from matplotlib import pyplot as plt
 import util
 
 
 class Lane:
     def __init__(self):
         self.mode_ = 'image'
-        self.width_ = -1
-        self.height_ = -1
-        self.lane_file_ = -1
+        self.lane_file_ = []
         self.roi_select_img_ = []
         self.roi_ = []
         self.roi_transform_ = []
@@ -18,7 +15,6 @@ class Lane:
         self.mode_ = mode
 
     def load_lane(self, file_path):
-        self.lane_file_ = -1
         if self.mode_ == 'image':
             try:
                 self.lane_file_ = cv.imread(file_path)
@@ -60,36 +56,32 @@ class Lane:
         self.roi_transform_.append([0.85 * width, 0])
         self.roi_transform_ = np.float32(self.roi_transform_)
 
-    def detect_img(self):
-        hls = cv.cvtColor(self.lane_file_, cv.COLOR_RGB2HLS)
-        thresh_img = util.thresh_edge(hls, self.lane_file_)
+    def detect_img(self, frame):
+        hls = cv.cvtColor(frame, cv.COLOR_RGB2HLS)
+        thresh_img = util.thresh_edge(hls, frame)
 
         self.roi_select_img_ = thresh_img.copy()
         self.set_roi(self.roi_select_img_)
 
         warped_img = util.transform_perspective(thresh_img, self.roi_, self.roi_transform_)
 
-        cv.imshow('image', warped_img)
-        cv.waitKey(0)
-
-
-
-
+        histogram = np.sum(warped_img[int(warped_img.shape[0] / 2):, :], axis=0)
 
         return thresh_img
 
-    def detect(self):
+    def detect(self, path):
+        self.lane_file_ = []
         self.roi_select_img_ = []
         self.roi_ = []
         self.roi_transform_ = []
+        self.load_lane(path)
         if self.mode_ == 'image':
-            return self.detect_img()
+            return self.detect_img(self.lane_file_)
 
 
 lane_detector = Lane()
 lane_detector.set_mode('image')
-lane_detector.load_lane('./original_lane_detection_5.jpg')
-result = lane_detector.detect()
+result = lane_detector.detect('./original_lane_detection_5.jpg')
 
 # cv.imshow("Image", result)
 # cv.waitKey(0)

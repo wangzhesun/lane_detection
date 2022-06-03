@@ -3,11 +3,11 @@ import numpy as np
 
 
 def sobel(img_channel, orient='x', sobel_kernel=3):
+    sobel_img = []
     if orient == 'x':
         sobel_img = cv.Sobel(img_channel, cv.CV_64F, 1, 0, sobel_kernel)
     if orient == 'y':
         sobel_img = cv.Sobel(img_channel, cv.CV_64F, 0, 1, sobel_kernel)
-
     return sobel_img
 
 
