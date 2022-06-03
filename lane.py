@@ -40,14 +40,19 @@ class Lane:
             cv.imshow('image', self.roi_select_img_)
 
     def detect_img(self):
+        dim = self.lane_file_.shape
+        height = dim[0]
+        width = dim[1]
         hls = cv.cvtColor(self.lane_file_, cv.COLOR_RGB2HLS)
         self.thresh_img_ = util.thresh_edge(hls, self.lane_file_)
         self.roi_select_img_ = self.thresh_img_.copy()
 
         cv.imshow('image', self.thresh_img_)
         cv.setMouseCallback('image', self.click_event)
-
         cv.waitKey(0)
+
+        self.roi_[1][1] = height
+        self.roi_[2][1] = height
 
         return self.thresh_img_
 
