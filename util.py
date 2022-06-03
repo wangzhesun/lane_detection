@@ -47,7 +47,7 @@ def thresh_edge(hls_img, orig_img):
     return srl_thresh_img
 
 
-def transform_perspective(frame, roi, roi_transform):
+def transform_perspective(frame, roi, roi_transform, plot=False):
     height = frame.shape[0]
     width = frame.shape[1]
     transform_matrix = cv.getPerspectiveTransform(roi, roi_transform)
@@ -56,6 +56,10 @@ def transform_perspective(frame, roi, roi_transform):
                                     [width, height], flags=cv.INTER_LINEAR)
 
     _, warped_img = cv.threshold(warped_img, 127, 255, cv.THRESH_BINARY)
+
+    if plot:
+        cv.imshow('Perspective Transformed Image', warped_img)
+        cv.waitKey(0)
     return warped_img
 
 
