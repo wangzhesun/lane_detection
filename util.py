@@ -1,5 +1,6 @@
 import cv2 as cv
 import numpy as np
+from matplotlib import pyplot as plt
 
 
 def sobel(img_channel, orient='x', sobel_kernel=3):
@@ -47,9 +48,8 @@ def thresh_edge(hls_img, orig_img):
 
 
 def transform_perspective(frame, roi, roi_transform):
-    dim = frame.shape
-    height = dim[0]
-    width = dim[1]
+    height = frame.shape[0]
+    width = frame.shape[1]
     transform_matrix = cv.getPerspectiveTransform(roi, roi_transform)
 
     warped_img = cv.warpPerspective(frame, transform_matrix,
@@ -57,3 +57,16 @@ def transform_perspective(frame, roi, roi_transform):
 
     _, warped_img = cv.threshold(warped_img, 127, 255, cv.THRESH_BINARY)
     return warped_img
+
+
+def calculate_histogram_peak(frame):
+    histogram = np.sum(frame[int(frame.shape[0] / 2):, :], axis=0)
+    mid_point = np.int(len(histogram) / 2)
+
+    print(histogram)
+    print(mid_point)
+
+    left_peak = np.argmax(histogram[:mid_point])
+    right_peak = np.argmax(histogram[mid_point:])+mid_point
+
+    return left_peak, right_peak
