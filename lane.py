@@ -14,7 +14,7 @@ Y_METER_PER_PIXEL = 0.025
 X_METER_PER_PIXEL = 0.001
 
 
-class Lane:
+class LaneDetector:
     def __init__(self):
         self.mode_ = 'image'
         self.lane_file_ = []
@@ -33,9 +33,19 @@ class Lane:
         self.center_offset_ = -1
 
     def set_mode(self, mode):
+        """
+        set the mode of the lane detector
+
+        :param mode: new mode to be set
+        """
         self.mode_ = mode
 
     def load_lane(self, file_path):
+        """
+        set the image or video to member variable
+
+        :param file_path: input image/video path
+        """
         if self.mode_ == 'image':
             try:
                 self.lane_file_ = cv.imread(file_path)
@@ -46,6 +56,15 @@ class Lane:
             assert self.lane_file_.isOpened(), 'Cannot capture source'
 
     def click_event(self, event, x, y, flags, params):
+        """
+        display images and store the pixel coordinate user click by the left mouse
+
+        :param event: event happening
+        :param x: x coordinate
+        :param y: y coordinate
+        :param flags: flags
+        :param params: params
+        """
         # checking for left mouse clicks
         if event == cv.EVENT_LBUTTONDOWN:
             # displaying the coordinates on the Shell
@@ -58,9 +77,19 @@ class Lane:
             cv.imshow('image', self.roi_select_img_)
 
     def manual_set_roi(self, array):
+        """
+        manually set pre-defined region-of-interest coordinates
+
+        :param array: user-provided array for region-of-interest coordinate
+        """
         self.roi_ = np.float32(array)
 
     def set_roi(self, frame):
+        """
+        set region-of-interest coordinates using left mouse click on the frame
+
+        :param frame: user provided frame
+        """
         cv.imshow('image', frame)
         cv.setMouseCallback('image', self.click_event)
         cv.waitKey(0)
@@ -68,6 +97,12 @@ class Lane:
         self.roi_ = np.float32(self.roi_)
 
     def detect_lane_pixels(self, frame, plot=False):
+        """
+        obtain best-fit functions for left and right lanes using sliding window
+
+        :param frame: user provided frame
+        :param plot: flag indicating whether a plot of the result is needed. Default value is False
+        """
         window_height = np.floor(self.height_ / self.window_num_)
 
         non_zero_pixels = np.nonzero(frame)
@@ -127,6 +162,13 @@ class Lane:
             cv.waitKey(0)
 
     def get_lane_line(self, frame, plot=False):
+        """
+        obtain more precise best-fit functions for left and right lanes and calculate curvature and
+        center offset information
+
+        :param frame: user provided frame
+        :param plot: flag indicating whether a plot of the result is needed. Default value is False
+        """
         non_zero_pixels = np.nonzero(frame)
         non_zero_pixels_y = non_zero_pixels[0]
         non_zero_pixels_x = non_zero_pixels[1]
@@ -203,6 +245,13 @@ class Lane:
             plt.show()
 
     def overlay_lane(self, frame, plot=False):
+        """
+        overlay the lane segmentation, together curvature and center offset, on the original frame
+
+        :param frame: user provided frame
+        :param plot: flag indicating whether a plot of the result is needed. Default value is False
+        :return: original frame with lane segmentation
+        """
         warp_zero = np.zeros_like(frame[:, :, 0]).astype(np.uint8)
         color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
 
@@ -240,6 +289,21 @@ class Lane:
 
     def detect_img(self, src, frame, roi=True, output_path=None, plot=True, manual=False,
                    array=None):
+        """
+        process image and output with lane segmentation
+
+        :param src: the image path
+        :param frame: the user provided frame
+        :param roi: flag indicating whether to region of interest selection is needed.
+                    Default is True
+        :param output_path: path for the image to be output. None indicating no output is needed.
+                            Default is None
+        :param plot: flag indicating whether a plot of the result is needed. Default is True
+        :param manual: flag indicating whether the region-of-interest coordinates will be set by
+                       pre-defined arrays. Default is False
+        :param array: pre-defined region-of-interest coordinates
+        :return: original frame with lane segmentation
+        """
         dim = frame.shape
         self.height_ = dim[0]
         self.width_ = dim[1]
@@ -280,6 +344,17 @@ class Lane:
         return lane_img
 
     def detect_vid(self, src, cap, output_path=None, manual=False, array=None):
+        """
+        process video and obtain lane segmentation of each frame
+
+        :param src: the video path
+        :param cap: the caption object containing the video
+        :param output_path: path for the image to be output. None indicating no output is needed.
+                            Default is None
+        :param manual: flag indicating whether the region-of-interest coordinates will be set by
+                       pre-defined arrays. Default is False
+        :param array: pre-defined region-of-interest coordinates
+        """
         # Set up output video
         # make the destination directory if not exist already
         if output_path is not None:
@@ -323,6 +398,13 @@ class Lane:
             out.release()
 
     def detect(self, path, output_path=None):
+        """
+        perform lane detection based on the input type (image/video)
+
+        :param path: the image/video path
+        :param output_path: path for the image to be output. None indicating no output is needed.
+                            Default is None
+        """
         self.lane_file_ = []
         self.roi_select_img_ = []
         self.roi_ = []
@@ -342,8 +424,9 @@ class Lane:
         cv.destroyAllWindows()
 
 
-lane_detector = Lane()
-# lane_detector.set_mode('image')
-# lane_detector.detect('./images/lane_10.jpg')
-lane_detector.set_mode('video')
-result = lane_detector.detect('./videos/video_2.mp4')
+if __name__ == '__main__':
+    lane_detector = LaneDetector()
+    lane_detector.set_mode('image')
+    lane_detector.detect('./images/lane_10.jpg')
+    # lane_detector.set_mode('video')
+    # result = lane_detector.detect('./videos/video_2.mp4')
