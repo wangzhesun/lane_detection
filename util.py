@@ -1,6 +1,5 @@
 import cv2 as cv
 import numpy as np
-from matplotlib import pyplot as plt
 
 
 def sobel(img_channel, orient='x', sobel_kernel=3):
@@ -92,3 +91,26 @@ def calculate_curvature(height, x_left, x_right, y_left, y_right, y_m_per_p, x_m
                   / np.absolute(2 * right_fit_cr[0])
 
     return left_curve, right_curve
+
+
+def calculate_center_offset(height, width, roi, roi_transform, left_lane, right_lane, x_m_per_p):
+    # Assume the camera is centered in the image.
+    # Get position of car in centimeters
+    car_location = width / 2
+
+    # Fine the x coordinate of the lane line bottom
+    bottom_left = left_lane[0] * height ** 2 + left_lane[1] * height + left_lane[2]
+    bottom_right = right_lane[0] * height ** 2 + right_lane[1] * height + right_lane[2]
+
+    lane_center = (bottom_right - bottom_left) / 2 + bottom_left
+
+    center_array = np.array([height, lane_center, 1]).reshape((-1, 1))
+
+    transform_matrix = cv.getPerspectiveTransform(roi, roi_transform)
+
+    real_lane_center = np.matmul(transform_matrix, center_array)
+    real_lane_center[0] = real_lane_center[0] / real_lane_center[2]
+    real_lane_center[1] = real_lane_center[1] / real_lane_center[2]
+    real_lane_center[2] = 1
+
+    return (car_location - real_lane_center[1][0]) * x_m_per_p * 100

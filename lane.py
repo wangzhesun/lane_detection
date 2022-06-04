@@ -1,11 +1,17 @@
 import cv2 as cv
 import numpy as np
-import util_try as util
+import util
 from matplotlib import pyplot as plt
 import os
 
-Y_METER_PER_PIXEL = 0.1
-X_METER_PER_PIXEL = 0.1
+# the following values should be set according to the videoing condition
+# the parameters for our testing videos are provided
+##### for testing video 1
+# Y_METER_PER_PIXEL = 0.03
+# X_METER_PER_PIXEL = 0.002
+##### for testing video 2
+Y_METER_PER_PIXEL = 0.025
+X_METER_PER_PIXEL = 0.001
 
 
 class Lane:
@@ -24,6 +30,7 @@ class Lane:
         self.right_lane_ = []
         self.left_curve_ = -1
         self.right_curve_ = -1
+        self.center_offset_ = -1
 
     def set_mode(self, mode):
         self.mode_ = mode
@@ -41,8 +48,7 @@ class Lane:
     def click_event(self, event, x, y, flags, params):
         # checking for left mouse clicks
         if event == cv.EVENT_LBUTTONDOWN:
-            # displaying the coordinates
-            # on the Shell
+            # displaying the coordinates on the Shell
             self.roi_.append([x, y])
             print(x, ' ', y)
 
@@ -51,18 +57,15 @@ class Lane:
                                              thickness=-1)
             cv.imshow('image', self.roi_select_img_)
 
+    def manual_set_roi(self, array):
+        self.roi_ = np.float32(array)
+
     def set_roi(self, frame):
         cv.imshow('image', frame)
         cv.setMouseCallback('image', self.click_event)
         cv.waitKey(0)
 
         self.roi_ = np.float32(self.roi_)
-
-        self.roi_transform_.append([0.2 * self.width_, 0])
-        self.roi_transform_.append([0.2 * self.width_, self.height_])
-        self.roi_transform_.append([0.8 * self.width_, self.height_])
-        self.roi_transform_.append([0.8 * self.width_, 0])
-        self.roi_transform_ = np.float32(self.roi_transform_)
 
     def detect_lane_pixels(self, frame, plot=False):
         window_height = np.floor(self.height_ / self.window_num_)
@@ -155,6 +158,11 @@ class Lane:
                                                                        Y_METER_PER_PIXEL,
                                                                        X_METER_PER_PIXEL)
 
+        self.center_offset_ = util.calculate_center_offset(self.height_, self.width_,
+                                                           self.roi_transform_, self.roi_,
+                                                           self.left_lane_, self.right_lane_,
+                                                           X_METER_PER_PIXEL)
+
         if plot:
             x_left_list = self.left_lane_[0] * y_list ** 2 + self.left_lane_[1] * y_list + \
                           self.left_lane_[2]
@@ -219,6 +227,10 @@ class Lane:
                    (int((5 / 600) * self.width_), int((20 / 338) * self.height_)),
                    cv.FONT_HERSHEY_SIMPLEX, (float((0.5 / 600) * self.width_)),
                    (255, 255, 255), 2, cv.LINE_AA)
+        cv.putText(lane_img, 'Center Offset: ' + str(self.center_offset_)[:7] + ' cm',
+                   (int((5 / 600) * self.width_), int((40 / 338) * self.height_)),
+                   cv.FONT_HERSHEY_SIMPLEX, (float((0.5 / 600) * self.width_)),
+                   (255, 255, 255), 2, cv.LINE_AA)
 
         if plot:
             cv.imshow('image', lane_img)
@@ -226,7 +238,8 @@ class Lane:
 
         return lane_img
 
-    def detect_img(self, src, frame, roi=True, output_path=None, plot=True):
+    def detect_img(self, src, frame, roi=True, output_path=None, plot=True, manual=False,
+                   array=None):
         dim = frame.shape
         self.height_ = dim[0]
         self.width_ = dim[1]
@@ -234,8 +247,17 @@ class Lane:
         self.margin_ = int(1 / 12 * self.width_)
 
         if roi:
+            self.roi_transform_.append([0.2 * self.width_, 0])
+            self.roi_transform_.append([0.2 * self.width_, self.height_])
+            self.roi_transform_.append([0.8 * self.width_, self.height_])
+            self.roi_transform_.append([0.8 * self.width_, 0])
+            self.roi_transform_ = np.float32(self.roi_transform_)
+
             self.roi_select_img_ = frame.copy()
-            self.set_roi(self.roi_select_img_)
+            if manual and array is not None:
+                self.manual_set_roi(array)
+            else:
+                self.set_roi(self.roi_select_img_)
 
         warped_img = util.transform_perspective(frame, self.roi_, self.roi_transform_)
 
@@ -257,7 +279,7 @@ class Lane:
 
         return lane_img
 
-    def detect_vid(self, src, cap, output_path=None):
+    def detect_vid(self, src, cap, output_path=None, manual=False, array=None):
         # Set up output video
         # make the destination directory if not exist already
         if output_path is not None:
@@ -274,9 +296,14 @@ class Lane:
             ret, frame = cap.read()
             if ret:
                 if frame_cnt == 0:
-                    lane_img = self.detect_img(src, frame, roi=True, output_path=None, plot=False)
+                    if manual and array is not None:
+                        lane_img = self.detect_img(src, frame, roi=True, plot=False, manual=True,
+                                                   array=array)
+                    else:
+                        lane_img = self.detect_img(src, frame, roi=True, plot=False)
                 else:
-                    lane_img = self.detect_img(src, frame, roi=False, output_path=None, plot=False)
+                    lane_img = self.detect_img(src, frame, roi=False, plot=False)
+
                 frame_cnt += 1
                 if output_path is not None:
                     out.write(lane_img)
@@ -306,12 +333,17 @@ class Lane:
         if self.mode_ == 'image':
             self.detect_img(path, self.lane_file_, output_path=output_path)
         else:
-            self.detect_vid(path, self.lane_file_, output_path)
+            ##### best region of interest for testing video 1
+            # array_vid_1 = [[479, 285], [4, 533], [828, 538], [565, 288]]
+            ##### best region of interest for testing video 2
+            array_vid_2 = [[565, 104], [6, 366], [1144, 718], [788, 112]]
+            self.detect_vid(path, self.lane_file_, output_path=output_path, manual=True,
+                            array=array_vid_2)
         cv.destroyAllWindows()
 
 
 lane_detector = Lane()
-lane_detector.set_mode('image')
-lane_detector.detect('./images/lane_10.jpg', './det')
-# lane_detector.set_mode('video')
-# result = lane_detector.detect('./videos/video_1.mp4')
+# lane_detector.set_mode('image')
+# lane_detector.detect('./images/lane_10.jpg')
+lane_detector.set_mode('video')
+result = lane_detector.detect('./videos/video_1.mp4')
