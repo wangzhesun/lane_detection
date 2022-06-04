@@ -348,7 +348,7 @@ class LaneDetectorCV:
         if output_path is not None:  # output is needed
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
-            output_img = '{}/det_{}'.format(output_path, src.split('/')[-1])
+            output_img = '{}/cv_det_{}'.format(output_path, src.split('/')[-1])
             cv.imwrite(output_img, lane_img)
 
         return lane_img
@@ -373,7 +373,7 @@ class LaneDetectorCV:
             cols = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
             rows = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
             fourcc = cv.VideoWriter_fourcc(*'MJPG')  # Define the codec for output video
-            output_vid = '{}/det_{}.avi'.format(output_path, src.split('/')[-1].split('.')[0])
+            output_vid = '{}/cv_det_{}.avi'.format(output_path, src.split('/')[-1].split('.')[0])
             out = cv.VideoWriter(output_vid, fourcc, 20.0, (cols, rows))
 
         frame_cnt = 0
