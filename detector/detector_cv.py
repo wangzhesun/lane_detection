@@ -415,6 +415,9 @@ class LaneDetectorCV:
         :param path: the image/video path
         :param output_path: path for the image to be output. None indicating no output is needed.
                             Default is None
+        :param manual: flag indicating whether the region-of-interest coordinates will be set by
+                       pre-defined arrays. Default is False
+        :param array: pre-defined region-of-interest coordinates
         """
         self.lane_file_ = []
         self.roi_select_img_ = []
