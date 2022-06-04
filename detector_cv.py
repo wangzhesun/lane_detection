@@ -1,6 +1,6 @@
 import cv2 as cv
 import numpy as np
-import util
+from utils import util_cv as util
 from matplotlib import pyplot as plt
 import os
 
@@ -14,7 +14,7 @@ Y_METER_PER_PIXEL = 0.025
 X_METER_PER_PIXEL = 0.001
 
 
-class LaneDetector:
+class LaneDetectorCV:
     def __init__(self):
         self.mode_ = 'image'
         self.lane_file_ = []
@@ -408,7 +408,7 @@ class LaneDetector:
         if output_path is not None:
             out.release()
 
-    def detect(self, path, output_path=None):
+    def detect(self, path, output_path=None, manual=False, array=None):
         """
         perform lane detection based on the input type (image/video)
 
@@ -426,18 +426,6 @@ class LaneDetector:
         if self.mode_ == 'image':
             self.detect_img(path, self.lane_file_, output_path=output_path)
         else:
-            ##### best region of interest for testing video 1
-            # array_vid_1 = [[479, 285], [4, 533], [828, 538], [565, 288]]
-            ##### best region of interest for testing video 2
-            array_vid_2 = [[565, 104], [6, 366], [1144, 718], [788, 112]]
-            self.detect_vid(path, self.lane_file_, output_path=output_path, manual=True,
-                            array=array_vid_2)
+            self.detect_vid(path, self.lane_file_, output_path=output_path, manual=manual,
+                            array=array)
         cv.destroyAllWindows()
-
-
-if __name__ == '__main__':
-    lane_detector = LaneDetector()
-    lane_detector.set_mode('image')
-    lane_detector.detect('./images/lane_10.jpg')
-    # lane_detector.set_mode('video')
-    # result = lane_detector.detect('./videos/video_2.mp4')
