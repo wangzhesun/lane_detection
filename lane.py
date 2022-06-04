@@ -2,6 +2,7 @@ import cv2 as cv
 import numpy as np
 import util
 from matplotlib import pyplot as plt
+import os
 
 
 class Lane:
@@ -50,14 +51,12 @@ class Lane:
         cv.setMouseCallback('image', self.click_event)
         cv.waitKey(0)
 
-        self.roi_[1][1] = self.height_
-        self.roi_[2][1] = self.height_
         self.roi_ = np.float32(self.roi_)
 
-        self.roi_transform_.append([0.15 * self.width_, 0])
-        self.roi_transform_.append([0.15 * self.width_, self.height_])
-        self.roi_transform_.append([0.85 * self.width_, self.height_])
-        self.roi_transform_.append([0.85 * self.width_, 0])
+        self.roi_transform_.append([0.25 * self.width_, 0])
+        self.roi_transform_.append([0.25 * self.width_, self.height_])
+        self.roi_transform_.append([0.75 * self.width_, self.height_])
+        self.roi_transform_.append([0.75 * self.width_, 0])
         self.roi_transform_ = np.float32(self.roi_transform_)
 
     def detect_lane_pixels(self, frame, plot=False):
@@ -210,7 +209,7 @@ class Lane:
 
         return lane_img
 
-    def detect_img(self, frame):
+    def detect_img(self, src, frame, roi=True, output_path=None, plot=True):
         dim = frame.shape
         self.height_ = dim[0]
         self.width_ = dim[1]
@@ -220,20 +219,70 @@ class Lane:
         hls = cv.cvtColor(frame, cv.COLOR_RGB2HLS)
         thresh_img = util.thresh_edge(hls, frame)
 
-        self.roi_select_img_ = thresh_img.copy()
-        self.set_roi(self.roi_select_img_)
+        if roi:
+            self.roi_select_img_ = thresh_img.copy()
+            self.set_roi(self.roi_select_img_)
 
         warped_img = util.transform_perspective(thresh_img, self.roi_, self.roi_transform_,
                                                 plot=False)
 
         self.detect_lane_pixels(warped_img, plot=False)
         self.get_lane_line(warped_img, plot=False)
-        return self.overlay_lane(frame, plot=False)
 
-    def detect_vid(self, vid):
-        
+        lane_img = self.overlay_lane(frame, plot=plot)
 
-    def detect(self, path):
+        if output_path is not None:
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            output_img = '{}/det_{}'.format(output_path, src.split('/')[-1])
+            cv.imwrite(output_img, lane_img)
+
+        return lane_img
+
+    def detect_vid(self, src, cap, output_path=None):
+        n_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))  # Get frame count
+        # Get width and height of video stream
+        w = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+        h = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+
+        # Set up output video
+        # make the destination directory if not exist already
+        if output_path is not None:
+            if not os.path.exists(output_path):
+                os.makedirs(output_path)
+            cols = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
+            rows = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
+            fourcc = cv.VideoWriter_fourcc(*'MJPG')  # Define the codec for output video
+            output_vid = '{}/det_{}.avi'.format(output_path, src.split('/')[-1].split('.')[0])
+            out = cv.VideoWriter(output_vid, fourcc, 20.0, (cols, rows))
+
+        frame_cnt = 0
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if ret:
+                if frame_cnt == 0:
+                    lane_img = self.detect_img(src, frame, roi=True, output_path=None, plot=False)
+                else:
+                    lane_img = self.detect_img(src, frame, roi=False, output_path=None, plot=False)
+                frame_cnt += 1
+                if output_path is not None:
+                    out.write(lane_img)
+                cv.imshow("lane video", lane_img)
+
+                key = cv.waitKey(1)
+                if key == 27:
+                    if output_path is not None:
+                        out.release()
+                    cap.release()
+                    cv.destroyAllWindows()
+                    break
+            else:
+                break
+
+        if output_path is not None:
+            out.release()
+
+    def detect(self, path, output_path=None):
         self.lane_file_ = []
         self.roi_select_img_ = []
         self.roi_ = []
@@ -242,15 +291,16 @@ class Lane:
         self.left_lane_ = []
         self.right_lane_ = []
         if self.mode_ == 'image':
-            self.detect_img(self.lane_file_)
+            self.detect_img(path, self.lane_file_, output_path=output_path)
         else:
-            self.detect_vid(self.lane_file_)
-
+            self.detect_vid(path, self.lane_file_, output_path)
 
 
 lane_detector = Lane()
-lane_detector.set_mode('image')
-result = lane_detector.detect('./lane_3.jpg')
+# lane_detector.set_mode('image')
+# result = lane_detector.detect('./images/lane_4.jpg')
+lane_detector.set_mode('video')
+result = lane_detector.detect('./videos/video_1.mp4', output_path='./det')
 
 # cv.imshow("Image", result)
 # cv.waitKey(0)
