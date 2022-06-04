@@ -5,6 +5,9 @@ from matplotlib import pyplot as plt
 import os
 
 
+Y_METER_PER_PIXEL = 10
+X_METER_PER_PIXEL = 10
+
 class Lane:
     def __init__(self):
         self.mode_ = 'image'
@@ -12,13 +15,15 @@ class Lane:
         self.roi_select_img_ = []
         self.roi_ = []
         self.roi_transform_ = []
-        self.window_height_ = 30
+        self.window_num_ = 10
         self.height_ = -1
         self.width_ = -1
         self.min_pixel_recenter_ = -1
         self.margin_ = -1
         self.left_lane_ = []
         self.right_lane_ = []
+        self.left_curve_ = -1
+        self.right_curve_ = -1
 
     def set_mode(self, mode):
         self.mode_ = mode
@@ -60,7 +65,7 @@ class Lane:
         self.roi_transform_ = np.float32(self.roi_transform_)
 
     def detect_lane_pixels(self, frame, plot=False):
-        window_num = int(self.height_ / self.window_height_)
+        window_height = np.floor(self.height_ / self.window_num_)
 
         non_zero_pixels = np.nonzero(frame)
         non_zero_pixels_y = non_zero_pixels[0]
@@ -72,9 +77,9 @@ class Lane:
 
         x_left_center, x_right_center = util.calculate_histogram_peak(frame)
 
-        for window in range(window_num):
-            window_y_low = self.height_ - window * self.window_height_
-            window_y_high = self.height_ - (window + 1) * self.window_height_
+        for window in range(self.window_num_):
+            window_y_low = self.height_ - window * window_height
+            window_y_high = self.height_ - (window + 1) * window_height
             window_x_left_low = x_left_center - self.margin_
             window_x_left_high = x_left_center + self.margin_
             window_x_right_low = x_right_center - self.margin_
@@ -142,6 +147,14 @@ class Lane:
         self.left_lane_ = np.polyfit(y_left_lane_pixel, x_left_lane_pixel, 2)
         self.right_lane_ = np.polyfit(y_right_lane_pixel, x_right_lane_pixel, 2)
 
+        self.left_curve_, self.right_curve_ = util.calculate_curvature(self.height_,
+                                                                       x_left_lane_pixel,
+                                                                       x_right_lane_pixel,
+                                                                       y_left_lane_pixel,
+                                                                       y_right_lane_pixel,
+                                                                       Y_METER_PER_PIXEL,
+                                                                       X_METER_PER_PIXEL)
+
         if plot:
             x_left_list = self.left_lane_[0] * y_list ** 2 + self.left_lane_[1] * y_list + \
                           self.left_lane_[2]
@@ -172,11 +185,11 @@ class Lane:
             # Draw the lane onto the warped blank image
             cv.fillPoly(window_img, np.int_([left_line_pts]), (0, 255, 0))
             cv.fillPoly(window_img, np.int_([right_line_pts]), (0, 255, 0))
-            result = cv.addWeighted(out_img, 1, window_img, 0.3, 0)
+            lane_line_img = cv.addWeighted(out_img, 1, window_img, 0.3, 0)
 
             # Plot the figures
             plt.figure()
-            plt.imshow(result)
+            plt.imshow(lane_line_img)
             plt.plot(x_left_list, y_list, color='yellow')
             plt.plot(x_right_list, y_list, color='yellow')
             plt.show()
@@ -202,10 +215,19 @@ class Lane:
         lane_img = cv.addWeighted(frame, 1, warped_img, 0.3, 0)
 
         if plot:
+
             # Plot the figures
-            plt.figure()
-            plt.imshow(cv.cvtColor(lane_img, cv.COLOR_BGR2RGB))
-            plt.show()
+            # plt.figure()
+            # plt.imshow(cv.cvtColor(lane_img, cv.COLOR_BGR2RGB))
+            # plt.text()
+            cv.putText(lane_img, 'Curve Radius: ' + str((self.left_curve_ + self.right_curve_)
+                                                        / 2)[:7] + ' m',
+                       (int((5 / 600) * self.width_), int((20 / 338) * self.height_)),
+                       cv.FONT_HERSHEY_SIMPLEX, (float((0.5 / 600) * self.width_)),
+                       (255, 255, 255), 2, cv.LINE_AA)
+            cv.imshow('image', lane_img)
+            cv.waitKey(0)
+            # plt.show()
 
         return lane_img
 
@@ -297,10 +319,10 @@ class Lane:
 
 
 lane_detector = Lane()
-# lane_detector.set_mode('image')
-# result = lane_detector.detect('./images/lane_4.jpg')
-lane_detector.set_mode('video')
-result = lane_detector.detect('./videos/video_1.mp4', output_path='./det')
+lane_detector.set_mode('image')
+result = lane_detector.detect('./images/lane_7.jpg', './det')
+# lane_detector.set_mode('video')
+# result = lane_detector.detect('./videos/video_1.mp4', output_path='./det')
 
 # cv.imshow("Image", result)
 # cv.waitKey(0)
