@@ -159,16 +159,16 @@ class Lane:
                     non_zero_pixels_x[right_lane_pixels_id]] = [0, 0, 255]
             # Create a polygon to show the search window area, and recast
             # the x and y points into a usable format for cv2.fillPoly()
-            left_line_window1 = np.array([np.transpose(np.vstack([
+            left_line_left_bound = np.array([np.transpose(np.vstack([
                 x_left_list - self.margin_, y_list]))])
-            left_line_window2 = np.array([np.flipud(np.transpose(np.vstack([
+            left_line_right_bound = np.array([np.flipud(np.transpose(np.vstack([
                 x_left_list + self.margin_, y_list])))])
-            left_line_pts = np.hstack((left_line_window1, left_line_window2))
-            right_line_window1 = np.array([np.transpose(np.vstack([
+            left_line_pts = np.hstack((left_line_left_bound, left_line_right_bound))
+            right_line_left_bound = np.array([np.transpose(np.vstack([
                 x_right_list - self.margin_, y_list]))])
-            right_line_window2 = np.array([np.flipud(np.transpose(np.vstack([
+            right_line_right_bound = np.array([np.flipud(np.transpose(np.vstack([
                 x_right_list + self.margin_, y_list])))])
-            right_line_pts = np.hstack((right_line_window1, right_line_window2))
+            right_line_pts = np.hstack((right_line_left_bound, right_line_right_bound))
 
             # Draw the lane onto the warped blank image
             cv.fillPoly(window_img, np.int_([left_line_pts]), (0, 255, 0))
@@ -181,6 +181,34 @@ class Lane:
             plt.plot(x_left_list, y_list, color='yellow')
             plt.plot(x_right_list, y_list, color='yellow')
             plt.show()
+
+    def overlay_lane(self, frame, plot=False):
+        warp_zero = np.zeros_like(frame[:, :, 0]).astype(np.uint8)
+        color_warp = np.dstack((warp_zero, warp_zero, warp_zero))
+
+        y_list = np.linspace(0, self.height_ - 1, self.height_)
+        x_left_list = self.left_lane_[0] * y_list ** 2 + self.left_lane_[1] * y_list + \
+                      self.left_lane_[2]
+        x_right_list = self.right_lane_[0] * y_list ** 2 + self.right_lane_[1] * y_list + \
+                       self.right_lane_[2]
+
+        left_line_bound = np.array([np.transpose(np.vstack([x_left_list, y_list]))])
+        right_line_bound = np.array([np.flipud(np.transpose(np.vstack([x_right_list, y_list])))])
+        lane_pts = np.hstack((left_line_bound, right_line_bound))
+
+        cv.fillPoly(color_warp, np.int_([lane_pts]), (0, 255, 0))
+
+        warped_img = util.transform_perspective(color_warp, self.roi_transform_, self.roi_)
+
+        lane_img = cv.addWeighted(frame, 1, warped_img, 0.3, 0)
+
+        if plot:
+            # Plot the figures
+            plt.figure()
+            plt.imshow(cv.cvtColor(lane_img, cv.COLOR_BGR2RGB))
+            plt.show()
+
+        return lane_img
 
     def detect_img(self, frame):
         dim = frame.shape
@@ -199,9 +227,11 @@ class Lane:
                                                 plot=False)
 
         self.detect_lane_pixels(warped_img, plot=False)
-        self.get_lane_line(warped_img, plot=True)
+        self.get_lane_line(warped_img, plot=False)
+        return self.overlay_lane(frame, plot=False)
 
-        return thresh_img
+    def detect_vid(self, vid):
+        
 
     def detect(self, path):
         self.lane_file_ = []
@@ -212,12 +242,15 @@ class Lane:
         self.left_lane_ = []
         self.right_lane_ = []
         if self.mode_ == 'image':
-            return self.detect_img(self.lane_file_)
+            self.detect_img(self.lane_file_)
+        else:
+            self.detect_vid(self.lane_file_)
+
 
 
 lane_detector = Lane()
 lane_detector.set_mode('image')
-result = lane_detector.detect('./original_lane_detection_5.jpg')
+result = lane_detector.detect('./lane_3.jpg')
 
 # cv.imshow("Image", result)
 # cv.waitKey(0)
