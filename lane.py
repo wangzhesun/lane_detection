@@ -105,6 +105,7 @@ class LaneDetector:
         """
         window_height = np.floor(self.height_ / self.window_num_)
 
+        # get x and y coordinates of nonzero pixels in the frame
         non_zero_pixels = np.nonzero(frame)
         non_zero_pixels_y = non_zero_pixels[0]
         non_zero_pixels_x = non_zero_pixels[1]
@@ -113,9 +114,10 @@ class LaneDetector:
         right_lane_pixels_id = []
         frame_sliding_window = frame.copy()
 
-        x_left_center, x_right_center = util.calculate_histogram_peak(frame)
+        x_left_center, x_right_center = util.calculate_histogram_peak(frame)  # get two peaks
 
-        for window in range(self.window_num_):
+        for window in range(self.window_num_):  # iterate over all windows
+            # get the bounding coordinates of the left and right windows on the current window level
             window_y_low = self.height_ - window * window_height
             window_y_high = self.height_ - (window + 1) * window_height
             window_x_left_low = x_left_center - self.margin_
@@ -123,12 +125,13 @@ class LaneDetector:
             window_x_right_low = x_right_center - self.margin_
             window_x_right_high = x_right_center + self.margin_
 
-            if plot:
+            if plot:  # add window to the frame if flag plot is TRUE
                 cv.rectangle(frame_sliding_window, (int(window_x_left_low), int(window_y_low)), (
                     int(window_x_left_high), int(window_y_high)), (255, 255, 255), 2)
                 cv.rectangle(frame_sliding_window, (int(window_x_right_low), int(window_y_low)), (
                     int(window_x_right_high), int(window_y_high)), (255, 255, 255), 2)
 
+            # filter valid lane pixels
             good_left_pixel_id = ((non_zero_pixels_y < window_y_low) &
                                   (non_zero_pixels_y > window_y_high) &
                                   (non_zero_pixels_x > window_x_left_low) &
@@ -141,19 +144,22 @@ class LaneDetector:
             left_lane_pixels_id.append(good_left_pixel_id)
             right_lane_pixels_id.append(good_right_pixel_id)
 
+            # update the window center if the lane pixel exceeds a pre-defined number
             if len(good_left_pixel_id) >= self.min_pixel_recenter_:
                 x_left_center = int(np.mean(non_zero_pixels_x[good_left_pixel_id]))
             if len(good_right_pixel_id) >= self.min_pixel_recenter_:
                 x_right_center = int(np.mean(non_zero_pixels_x[good_right_pixel_id]))
 
+        # convert list of lists to one-dimensional numpy array
         left_lane_pixels_id = np.concatenate(left_lane_pixels_id)
         right_lane_pixels_id = np.concatenate(right_lane_pixels_id)
-
+        # get x and y coordinates of left and right lanes
         x_left_lane_pixel = non_zero_pixels_x[left_lane_pixels_id]
         y_left_lane_pixel = non_zero_pixels_y[left_lane_pixels_id]
         x_right_lane_pixel = non_zero_pixels_x[right_lane_pixels_id]
         y_right_lane_pixel = non_zero_pixels_y[right_lane_pixels_id]
 
+        # find best-fitting functions for both lanes
         self.left_lane_ = np.polyfit(y_left_lane_pixel, x_left_lane_pixel, 2)
         self.right_lane_ = np.polyfit(y_right_lane_pixel, x_right_lane_pixel, 2)
 
@@ -179,6 +185,7 @@ class LaneDetector:
         x_right_list = self.right_lane_[0] * non_zero_pixels_y ** 2 + self.right_lane_[1] * \
                        non_zero_pixels_y + self.right_lane_[2]
 
+        # filter out valid lane pixels
         left_lane_pixels_id = ((non_zero_pixels_x < (x_left_list + self.margin_)) &
                                (non_zero_pixels_x > (x_left_list - self.margin_)))
         right_lane_pixels_id = ((non_zero_pixels_x < (x_right_list + self.margin_)) &
@@ -192,6 +199,7 @@ class LaneDetector:
         self.left_lane_ = np.polyfit(y_left_lane_pixel, x_left_lane_pixel, 2)
         self.right_lane_ = np.polyfit(y_right_lane_pixel, x_right_lane_pixel, 2)
 
+        # calculate curvature information
         self.left_curve_, self.right_curve_ = util.calculate_curvature(self.height_,
                                                                        x_left_lane_pixel,
                                                                        x_right_lane_pixel,
@@ -199,7 +207,7 @@ class LaneDetector:
                                                                        y_right_lane_pixel,
                                                                        Y_METER_PER_PIXEL,
                                                                        X_METER_PER_PIXEL)
-
+        # calculate center offset information
         self.center_offset_ = util.calculate_center_offset(self.height_, self.width_,
                                                            self.roi_transform_, self.roi_,
                                                            self.left_lane_, self.right_lane_,
@@ -260,16 +268,17 @@ class LaneDetector:
                       self.left_lane_[2]
         x_right_list = self.right_lane_[0] * y_list ** 2 + self.right_lane_[1] * y_list + \
                        self.right_lane_[2]
-
+        # get bounds for left and right lanes
         left_line_bound = np.array([np.transpose(np.vstack([x_left_list, y_list]))])
         right_line_bound = np.array([np.flipud(np.transpose(np.vstack([x_right_list, y_list])))])
         lane_pts = np.hstack((left_line_bound, right_line_bound))
-
+        # fill in-between left and right lanes
         cv.fillPoly(color_warp, np.int_([lane_pts]), (0, 255, 0))
 
+        # transform the lane-information image to the perspective of the original frame
         warped_img = util.transform_perspective(color_warp, self.roi_transform_, self.roi_)
         _, warped_img = cv.threshold(warped_img, 127, 255, cv.THRESH_BINARY)
-
+        # combine the lane information image with the original image using certain weight
         lane_img = cv.addWeighted(frame, 1, warped_img, 0.3, 0)
         cv.putText(lane_img, 'Curve Radius: ' + str((self.left_curve_ + self.right_curve_)
                                                     / 2)[:7] + ' m',
@@ -310,7 +319,7 @@ class LaneDetector:
         self.min_pixel_recenter_ = int(1 / 48 * self.width_)
         self.margin_ = int(1 / 12 * self.width_)
 
-        if roi:
+        if roi:  # check if region-of-interest selection is needed
             self.roi_transform_.append([0.2 * self.width_, 0])
             self.roi_transform_.append([0.2 * self.width_, self.height_])
             self.roi_transform_.append([0.8 * self.width_, self.height_])
@@ -318,13 +327,14 @@ class LaneDetector:
             self.roi_transform_ = np.float32(self.roi_transform_)
 
             self.roi_select_img_ = frame.copy()
-            if manual and array is not None:
-                self.manual_set_roi(array)
+            if manual and array is not None:  # if flag manual is TRUE
+                self.manual_set_roi(array)  # set pre-defined region-of-interest coordinates
             else:
-                self.set_roi(self.roi_select_img_)
+                self.set_roi(self.roi_select_img_)  # select region-of-interest using mouse
 
+        # transform perspective
         warped_img = util.transform_perspective(frame, self.roi_, self.roi_transform_)
-
+        # convert to HLS representation
         hls = cv.cvtColor(warped_img, cv.COLOR_RGB2HLS)
         warped_img = util.thresh_edge(hls, warped_img)
 
@@ -335,7 +345,7 @@ class LaneDetector:
 
         lane_img = self.overlay_lane(frame, plot=plot)
 
-        if output_path is not None:
+        if output_path is not None:  # output is needed
             if not os.path.exists(output_path):
                 os.makedirs(output_path)
             output_img = '{}/det_{}'.format(output_path, src.split('/')[-1])
@@ -367,10 +377,10 @@ class LaneDetector:
             out = cv.VideoWriter(output_vid, fourcc, 20.0, (cols, rows))
 
         frame_cnt = 0
-        while cap.isOpened():
+        while cap.isOpened():  # iterate over all video frames
             ret, frame = cap.read()
             if ret:
-                if frame_cnt == 0:
+                if frame_cnt == 0:  # set region-of-interest coordinates only once
                     if manual and array is not None:
                         lane_img = self.detect_img(src, frame, roi=True, plot=False, manual=True,
                                                    array=array)
@@ -384,7 +394,7 @@ class LaneDetector:
                     out.write(lane_img)
                 cv.imshow("lane video", lane_img)
 
-                key = cv.waitKey(1)
+                key = cv.waitKey(1)  # allow early termination
                 if key == 27:
                     if output_path is not None:
                         out.release()
@@ -394,6 +404,7 @@ class LaneDetector:
             else:
                 break
 
+        cap.release()
         if output_path is not None:
             out.release()
 

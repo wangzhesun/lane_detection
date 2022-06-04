@@ -45,12 +45,12 @@ def mag_thresh(image, sobel_kernel=3, thresh=(0, 255)):
     :param image: user provided image
     :param sobel_kernel: sobel kernel size
     :param thresh: user-input closed-interval threshold
-    :return: threshold combination of x- and y-direction sobel images
+    :return: threshold combination of x- and y-directions sobel images
     """
     sobel_x = np.absolute(sobel(image, 'x', sobel_kernel))
     sobel_y = np.absolute(sobel(image, 'y', sobel_kernel))
 
-    mag = np.sqrt(sobel_x ** 2 + sobel_y ** 2)
+    mag = np.sqrt(sobel_x ** 2 + sobel_y ** 2)  # combine sobel images of x- and y-directions
 
     return to_binary(mag, thresh)
 
@@ -63,19 +63,22 @@ def thresh_edge(hls_img, orig_img):
     :param orig_img: original image
     :return: threshold image
     """
+    # threshold l, s, and r channel using 85 percentile
     l_mean = np.percentile(hls_img[:, :, 1], 85)
     s_mean = np.percentile(hls_img[:, :, 2], 85)
     r_mean = np.percentile(orig_img[:, :, 2], 85)
     _, l_thresh_img = cv.threshold(hls_img[:, :, 1], l_mean, 255, cv.THRESH_BINARY)  # 120
-    l_thresh_img = cv.GaussianBlur(l_thresh_img, (3, 3), 0)
+    l_thresh_img = cv.GaussianBlur(l_thresh_img, (3, 3), 0)  # perform Gaussian blur to reduce noice
 
     l_thresh_img = mag_thresh(l_thresh_img, sobel_kernel=3, thresh=(110, 255))
 
     _, s_thresh_img = cv.threshold(hls_img[:, :, 2], s_mean, 255, cv.THRESH_BINARY)  # 80
     _, r_thresh_img = cv.threshold(orig_img[:, :, 2], r_mean, 255, cv.THRESH_BINARY)  # 120
 
+    # combine threshold images of s and r channels
     sr_thresh_img = cv.bitwise_and(s_thresh_img, r_thresh_img)
 
+    # combine threshold images of all three channels
     srl_thresh_img = cv.bitwise_or(sr_thresh_img, l_thresh_img.astype(np.uint8))
 
     return srl_thresh_img
@@ -94,10 +97,10 @@ def transform_perspective(frame, roi, roi_transform, plot=False):
     """
     height = frame.shape[0]
     width = frame.shape[1]
-    transform_matrix = cv.getPerspectiveTransform(roi, roi_transform)
+    transform_matrix = cv.getPerspectiveTransform(roi, roi_transform)  # get transformation matrix
 
-    warped_img = cv.warpPerspective(frame, transform_matrix,
-                                    [width, height], flags=cv.INTER_LINEAR)
+    # transform the frame using the transformation matrix
+    warped_img = cv.warpPerspective(frame, transform_matrix, [width, height], flags=cv.INTER_LINEAR)
 
     if plot:
         cv.imshow('Perspective Transformed Image', warped_img)
@@ -112,7 +115,7 @@ def calculate_histogram_peak(frame):
     :param frame: frame to be processed
     :return: left and right peaks of the histogram
     """
-    histogram = np.sum(frame[int(frame.shape[0] / 2):, :], axis=0)
+    histogram = np.sum(frame[int(frame.shape[0] / 2):, :], axis=0)  # get the histogram
 
     mid_point = np.int(len(histogram) / 2)
 
@@ -144,10 +147,10 @@ def calculate_curvature(height, x_left, x_right, y_left, y_right, y_m_per_p, x_m
     right_fit_cr = np.polyfit(y_right * y_m_per_p, x_right * x_m_per_p, 2)
 
     # Calculate the radii of curvature
-    left_curve = ((1 + (2 * left_fit_cr[0] * y_eval * y_m_per_p + left_fit_cr[1]) ** 2) ** 1.5) \
-                 / np.absolute(2 * left_fit_cr[0])
-    right_curve = ((1 + (2 * right_fit_cr[0] * y_eval * x_m_per_p + right_fit_cr[1]) ** 2) ** 1.5) \
-                  / np.absolute(2 * right_fit_cr[0])
+    left_curve = ((1 + (2 * left_fit_cr[0] * y_eval * y_m_per_p + left_fit_cr[1]) ** 2) ** 1.5)
+    left_curve = left_curve / np.absolute(2 * left_fit_cr[0])
+    right_curve = ((1 + (2 * right_fit_cr[0] * y_eval * x_m_per_p + right_fit_cr[1]) ** 2) ** 1.5)
+    right_curve = right_curve / np.absolute(2 * right_fit_cr[0])
 
     return left_curve, right_curve
 
