@@ -6,5 +6,5 @@ sole use of computer vision techniques makes the system vulnerable under extreme
 reflection, strong sunlight reflection, or extremely blurred lane lines. These problems can be alleviated by incorporating
 deep learning techniques. In addition to segmenting driving lanes, the system also aims to obtain
 the curve radius of the lane and the position offset relative to the lane center, which information 
-can be helpful for more advanced topics like self-driving cars. A detailed explanation of a simpler but similar version of this
-the lane detection system, written by Addison Sears-Collins, can be found [here](https://automaticaddison.com/the-ultimate-guide-to-real-time-lane-detection-using-opencv/).
+can be helpful for more advanced topics like self-driving cars. A detailed tutorial, written by Addison Sears-Collins,
+of a simpler but similar lane detection system can be found [here](https://automaticaddison.com/the-ultimate-guide-to-real-time-lane-detection-using-opencv/).
