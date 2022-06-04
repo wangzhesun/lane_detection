@@ -33,18 +33,19 @@ def mag_thresh(image, sobel_kernel=3, thresh=(0, 255)):
 
 
 def thresh_edge(hls_img, orig_img):
-    l_mean = np.mean(hls_img[:, :, 1])
-    s_mean = np.mean(hls_img[:, :, 2])
-    r_mean = np.mean(orig_img[:, :, 2])
-    _, l_thresh_img = cv.threshold(hls_img[:, :, 1], 120, 255, cv.THRESH_BINARY)  # 120
+    l_mean = np.percentile(hls_img[:, :, 1], 85)
+    s_mean = np.percentile(hls_img[:, :, 2], 85)
+    r_mean = np.percentile(orig_img[:, :, 2], 85)
+    _, l_thresh_img = cv.threshold(hls_img[:, :, 1], l_mean, 255, cv.THRESH_BINARY)  # 120
     l_thresh_img = cv.GaussianBlur(l_thresh_img, (3, 3), 0)
 
     l_thresh_img = mag_thresh(l_thresh_img, sobel_kernel=3, thresh=(110, 255))
 
-    _, s_thresh_img = cv.threshold(hls_img[:, :, 2], 80, 255, cv.THRESH_BINARY)  # 80
-    _, r_thresh_img = cv.threshold(orig_img[:, :, 2], 120, 255, cv.THRESH_BINARY)  # 120
+    _, s_thresh_img = cv.threshold(hls_img[:, :, 2], s_mean, 255, cv.THRESH_BINARY)  # 80
+    _, r_thresh_img = cv.threshold(orig_img[:, :, 2], r_mean, 255, cv.THRESH_BINARY)  # 120
 
     sr_thresh_img = cv.bitwise_and(s_thresh_img, r_thresh_img)
+
     srl_thresh_img = cv.bitwise_or(sr_thresh_img, l_thresh_img.astype(np.uint8))
 
     return srl_thresh_img
@@ -58,8 +59,6 @@ def transform_perspective(frame, roi, roi_transform, plot=False):
     warped_img = cv.warpPerspective(frame, transform_matrix,
                                     [width, height], flags=cv.INTER_LINEAR)
 
-    _, warped_img = cv.threshold(warped_img, 127, 255, cv.THRESH_BINARY)
-
     if plot:
         cv.imshow('Perspective Transformed Image', warped_img)
         cv.waitKey(0)
@@ -68,6 +67,7 @@ def transform_perspective(frame, roi, roi_transform, plot=False):
 
 def calculate_histogram_peak(frame):
     histogram = np.sum(frame[int(frame.shape[0] / 2):, :], axis=0)
+
     mid_point = np.int(len(histogram) / 2)
 
     left_peak = np.argmax(histogram[:mid_point])

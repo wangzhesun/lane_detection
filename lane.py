@@ -1,12 +1,12 @@
 import cv2 as cv
 import numpy as np
-import util
+import util_try as util
 from matplotlib import pyplot as plt
 import os
 
 
-Y_METER_PER_PIXEL = 10
-X_METER_PER_PIXEL = 10
+Y_METER_PER_PIXEL = 0.1
+X_METER_PER_PIXEL = 0.1
 
 class Lane:
     def __init__(self):
@@ -58,10 +58,10 @@ class Lane:
 
         self.roi_ = np.float32(self.roi_)
 
-        self.roi_transform_.append([0.25 * self.width_, 0])
-        self.roi_transform_.append([0.25 * self.width_, self.height_])
-        self.roi_transform_.append([0.75 * self.width_, self.height_])
-        self.roi_transform_.append([0.75 * self.width_, 0])
+        self.roi_transform_.append([0.2 * self.width_, 0])
+        self.roi_transform_.append([0.2 * self.width_, self.height_])
+        self.roi_transform_.append([0.8 * self.width_, self.height_])
+        self.roi_transform_.append([0.8 * self.width_, 0])
         self.roi_transform_ = np.float32(self.roi_transform_)
 
     def detect_lane_pixels(self, frame, plot=False):
@@ -211,23 +211,18 @@ class Lane:
         cv.fillPoly(color_warp, np.int_([lane_pts]), (0, 255, 0))
 
         warped_img = util.transform_perspective(color_warp, self.roi_transform_, self.roi_)
+        _, warped_img = cv.threshold(warped_img, 127, 255, cv.THRESH_BINARY)
 
         lane_img = cv.addWeighted(frame, 1, warped_img, 0.3, 0)
+        cv.putText(lane_img, 'Curve Radius: ' + str((self.left_curve_ + self.right_curve_)
+                                                    / 2)[:7] + ' m',
+                   (int((5 / 600) * self.width_), int((20 / 338) * self.height_)),
+                   cv.FONT_HERSHEY_SIMPLEX, (float((0.5 / 600) * self.width_)),
+                   (255, 255, 255), 2, cv.LINE_AA)
 
         if plot:
-
-            # Plot the figures
-            # plt.figure()
-            # plt.imshow(cv.cvtColor(lane_img, cv.COLOR_BGR2RGB))
-            # plt.text()
-            cv.putText(lane_img, 'Curve Radius: ' + str((self.left_curve_ + self.right_curve_)
-                                                        / 2)[:7] + ' m',
-                       (int((5 / 600) * self.width_), int((20 / 338) * self.height_)),
-                       cv.FONT_HERSHEY_SIMPLEX, (float((0.5 / 600) * self.width_)),
-                       (255, 255, 255), 2, cv.LINE_AA)
             cv.imshow('image', lane_img)
             cv.waitKey(0)
-            # plt.show()
 
         return lane_img
 
@@ -238,15 +233,26 @@ class Lane:
         self.min_pixel_recenter_ = int(1 / 48 * self.width_)
         self.margin_ = int(1 / 12 * self.width_)
 
-        hls = cv.cvtColor(frame, cv.COLOR_RGB2HLS)
-        thresh_img = util.thresh_edge(hls, frame)
-
         if roi:
-            self.roi_select_img_ = thresh_img.copy()
+            self.roi_select_img_ = frame.copy()
             self.set_roi(self.roi_select_img_)
 
-        warped_img = util.transform_perspective(thresh_img, self.roi_, self.roi_transform_,
-                                                plot=False)
+        # hls = cv.cvtColor(frame, cv.COLOR_RGB2HLS)
+        # thresh_img = util.thresh_edge(hls, frame)
+
+        # ######################################################
+        # transform_matrix = cv.getPerspectiveTransform(self.roi_, self.roi_transform_)
+        #
+        # warped_img = cv.warpPerspective(frame, transform_matrix, [self.width_, self.height_],
+        #                                 flags=cv.INTER_LINEAR)
+
+        warped_img = util.transform_perspective(frame, self.roi_, self.roi_transform_)
+
+        hls = cv.cvtColor(warped_img, cv.COLOR_RGB2HLS)
+        warped_img = util.thresh_edge(hls, warped_img)
+
+        _, warped_img = cv.threshold(warped_img, 127, 255, cv.THRESH_BINARY)
+        ######################################################
 
         self.detect_lane_pixels(warped_img, plot=False)
         self.get_lane_line(warped_img, plot=False)
@@ -262,11 +268,6 @@ class Lane:
         return lane_img
 
     def detect_vid(self, src, cap, output_path=None):
-        n_frames = int(cap.get(cv.CAP_PROP_FRAME_COUNT))  # Get frame count
-        # Get width and height of video stream
-        w = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
-        h = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
-
         # Set up output video
         # make the destination directory if not exist already
         if output_path is not None:
@@ -320,9 +321,9 @@ class Lane:
 
 lane_detector = Lane()
 lane_detector.set_mode('image')
-result = lane_detector.detect('./images/lane_7.jpg', './det')
+result = lane_detector.detect('./images/lane_10.jpg', './det')
 # lane_detector.set_mode('video')
-# result = lane_detector.detect('./videos/video_1.mp4', output_path='./det')
+# result = lane_detector.detect('./videos/video_1.mp4')
 
 # cv.imshow("Image", result)
 # cv.waitKey(0)
