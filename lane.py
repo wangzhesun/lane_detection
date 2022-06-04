@@ -4,9 +4,9 @@ import util_try as util
 from matplotlib import pyplot as plt
 import os
 
-
 Y_METER_PER_PIXEL = 0.1
 X_METER_PER_PIXEL = 0.1
+
 
 class Lane:
     def __init__(self):
@@ -237,22 +237,12 @@ class Lane:
             self.roi_select_img_ = frame.copy()
             self.set_roi(self.roi_select_img_)
 
-        # hls = cv.cvtColor(frame, cv.COLOR_RGB2HLS)
-        # thresh_img = util.thresh_edge(hls, frame)
-
-        # ######################################################
-        # transform_matrix = cv.getPerspectiveTransform(self.roi_, self.roi_transform_)
-        #
-        # warped_img = cv.warpPerspective(frame, transform_matrix, [self.width_, self.height_],
-        #                                 flags=cv.INTER_LINEAR)
-
         warped_img = util.transform_perspective(frame, self.roi_, self.roi_transform_)
 
         hls = cv.cvtColor(warped_img, cv.COLOR_RGB2HLS)
         warped_img = util.thresh_edge(hls, warped_img)
 
         _, warped_img = cv.threshold(warped_img, 127, 255, cv.THRESH_BINARY)
-        ######################################################
 
         self.detect_lane_pixels(warped_img, plot=False)
         self.get_lane_line(warped_img, plot=False)
@@ -317,16 +307,11 @@ class Lane:
             self.detect_img(path, self.lane_file_, output_path=output_path)
         else:
             self.detect_vid(path, self.lane_file_, output_path)
+        cv.destroyAllWindows()
 
 
 lane_detector = Lane()
 lane_detector.set_mode('image')
-result = lane_detector.detect('./images/lane_10.jpg', './det')
+lane_detector.detect('./images/lane_10.jpg', './det')
 # lane_detector.set_mode('video')
 # result = lane_detector.detect('./videos/video_1.mp4')
-
-# cv.imshow("Image", result)
-# cv.waitKey(0)
-# print(lane_detector.roi_)
-# print(lane_detector.roi_transform_)
-cv.destroyAllWindows()
