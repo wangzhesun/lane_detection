@@ -1,6 +1,6 @@
 import cv2 as cv
 import numpy as np
-from utils import util_cv as util
+from util import util_cv as util
 from matplotlib import pyplot as plt
 import os
 
